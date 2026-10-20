@@ -1,67 +1,122 @@
-import React, { useRef, useState } from 'react';
-import type { FormEvent } from 'react';
+import React, { useEffect, useState } from 'react';
 import './App.css';
 import {
   COFFEE_TALK_TOPICS,
   EQUIPMENT_OPTIONS,
-  getPreboardingAnswer,
-  PREBOARDING_TASKS,
-  QUICK_ACTIONS,
+  INITIAL_PROGRESS,
+  PREBOARDING_STAGES,
   SOFTWARE_OPTIONS,
+  STORAGE_KEY,
   TRAVEL_OPTIONS,
 } from './constants';
-import type { Message } from './types';
+import type { PreboardingProgress, PreboardingStageId } from './constants';
+
+const isStageId = (value: unknown): value is PreboardingStageId =>
+  PREBOARDING_STAGES.some((stage) => stage.id === value);
+
+const isStringArray = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every((item) => typeof item === 'string');
+
+const isAllowedArray = (value: unknown, allowedValues: readonly string[]): value is string[] =>
+  isStringArray(value) && value.every((item) => allowedValues.some((allowed) => allowed === item));
+
+const isProgress = (value: unknown): value is PreboardingProgress => {
+  if (typeof value !== 'object' || value === null) return false;
+  const progress = value as Record<string, unknown>;
+
+  return (
+    isStageId(progress.activeStage) &&
+    isAllowedArray(progress.completedStages, PREBOARDING_STAGES.map((stage) => stage.id)) &&
+    new Set(progress.completedStages).size === progress.completedStages.length &&
+    progress.completedStages.every(isStageId) &&
+    isAllowedArray(progress.equipment, EQUIPMENT_OPTIONS.map((option) => option.id)) &&
+    isAllowedArray(progress.software, SOFTWARE_OPTIONS.map((option) => option.id)) &&
+    typeof progress.hasCarApproval === 'boolean' &&
+    typeof progress.wantsCompanyCar === 'boolean' &&
+    typeof progress.coffeeTalkInterest === 'boolean' &&
+    isAllowedArray(progress.coffeeTalkTopics, COFFEE_TALK_TOPICS.map((topic) => topic.id)) &&
+    (progress.travelMode === '' || TRAVEL_OPTIONS.some((option) => option.id === progress.travelMode)) &&
+    typeof progress.needsAccommodation === 'boolean'
+  );
+};
+
+const readProgress = (): { progress: PreboardingProgress; warning: string } => {
+  try {
+    const savedProgress = window.localStorage.getItem(STORAGE_KEY);
+    if (!savedProgress) return { progress: INITIAL_PROGRESS, warning: '' };
+
+    const parsedProgress: unknown = JSON.parse(savedProgress);
+    if (!isProgress(parsedProgress)) {
+      return {
+        progress: INITIAL_PROGRESS,
+        warning: 'Der gespeicherte Demo-Fortschritt war unvollständig und wurde zurückgesetzt.',
+      };
+    }
+
+    return { progress: parsedProgress, warning: '' };
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return {
+        progress: INITIAL_PROGRESS,
+        warning: 'Der gespeicherte Demo-Fortschritt konnte nicht gelesen werden und wurde zurückgesetzt.',
+      };
+    }
+    if (error instanceof DOMException) {
+      return {
+        progress: INITIAL_PROGRESS,
+        warning: 'Der Browser kann den Demo-Fortschritt nicht lesen. Änderungen bleiben möglicherweise nicht erhalten.',
+      };
+    }
+    throw error;
+  }
+};
 
 const App: React.FC = () => {
-  const [completedTasks, setCompletedTasks] = useState<string[]>([]);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      text: 'Hallo! Ich helfe dir bei der Vorbereitung auf deinen Start bei All for One. Ich beantworte nur allgemeine Fragen mit freigegebenen Informationen und verweise dich sonst an den offiziellen Kontakt.',
-    },
-  ]);
-  const [question, setQuestion] = useState('');
-  const messageSequence = useRef(0);
-  const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
-  const [selectedSoftware, setSelectedSoftware] = useState<string[]>([]);
-  const [carApproval, setCarApproval] = useState(false);
-  const [requestedCar, setRequestedCar] = useState(false);
-  const [travelMode, setTravelMode] = useState('');
-  const [needsHotel, setNeedsHotel] = useState(false);
-  const [coffeeTalkInterest, setCoffeeTalkInterest] = useState(false);
-  const [coffeeTalkTopics, setCoffeeTalkTopics] = useState<string[]>([]);
-  const [demoNotice, setDemoNotice] = useState('');
+  const [initialState] = useState(readProgress);
+  const [progress, setProgress] = useState(initialState.progress);
+  const [storageWarning, setStorageWarning] = useState(initialState.warning);
+  const activeIndex = PREBOARDING_STAGES.findIndex((stage) => stage.id === progress.activeStage);
+  const activeStage = PREBOARDING_STAGES[activeIndex];
+  const isStageComplete = progress.completedStages.includes(activeStage.id);
 
-  const sendMessage = (text: string) => {
-    const trimmedText = text.trim();
-    if (!trimmedText) return;
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    } catch (error) {
+      if (!(error instanceof DOMException)) throw error;
+      setStorageWarning('Speichern im Browser ist fehlgeschlagen. Dein Fortschritt ist möglicherweise nach dem Schließen der Seite weg.');
+    }
+  }, [progress]);
 
-    messageSequence.current += 1;
-    const messageId = messageSequence.current;
-    setMessages((currentMessages) => [
-      ...currentMessages,
-      { id: `${messageId}-question`, role: 'user', text: trimmedText },
-      { id: `${messageId}-answer`, role: 'assistant', text: getPreboardingAnswer(trimmedText) },
-    ]);
-    setQuestion('');
+  const updateProgress = <Key extends keyof PreboardingProgress>(
+    key: Key,
+    value: PreboardingProgress[Key],
+  ) => {
+    setProgress((current) => ({ ...current, [key]: value }));
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    sendMessage(question);
-  };
-
-  const toggleTask = (taskId: string) => {
-    setCompletedTasks((currentTasks) =>
-      currentTasks.includes(taskId)
-        ? currentTasks.filter((id) => id !== taskId)
-        : [...currentTasks, taskId],
-    );
-  };
-
-  const toggleSelection = (values: string[], value: string) =>
+  const toggleValue = (values: string[], value: string) =>
     values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+
+  const openStage = (stageId: PreboardingStageId) => updateProgress('activeStage', stageId);
+
+  const continueToNextStage = () => {
+    const completedStages = progress.completedStages.includes(activeStage.id)
+      ? progress.completedStages
+      : [...progress.completedStages, activeStage.id];
+    const nextStage = PREBOARDING_STAGES[activeIndex + 1];
+
+    setProgress((current) => ({
+      ...current,
+      completedStages,
+      activeStage: nextStage?.id ?? current.activeStage,
+    }));
+  };
+
+  const resetProgress = () => {
+    setProgress(INITIAL_PROGRESS);
+    setStorageWarning('');
+  };
 
   return (
     <div className="app-shell">
@@ -74,7 +129,7 @@ const App: React.FC = () => {
         </a>
         <div className="topbar-note">
           <span className="status-dot" />
-          <span>Vor deinem ersten Arbeitstag</span>
+          <span>Dein Weg zu Tag 1</span>
         </div>
       </header>
 
@@ -84,11 +139,11 @@ const App: React.FC = () => {
             <p className="eyebrow">SCHÖN, DASS DU BALD DABEI BIST</p>
             <h1>Dein Start beginnt<br />schon hier.</h1>
             <p className="hero-description">
-              Alles Wichtige für die Zeit vor deinem ersten Arbeitstag – übersichtlich an einem Ort.
-              Ohne Anmeldung und ohne dass du persönliche Daten eingeben musst.
+              Schritt für Schritt gut vorbereitet. Du erledigst nur, was gerade ansteht – und kannst
+              später genau hier weitermachen.
             </p>
-            <a className="primary-link" href="#checkliste">
-              Zur Vorbereitungsliste <span aria-hidden="true">↓</span>
+            <a className="primary-link" href="#deine-etappen">
+              Meine Etappen ansehen <span aria-hidden="true">↓</span>
             </a>
           </div>
           <div className="hero-art" aria-hidden="true">
@@ -105,277 +160,233 @@ const App: React.FC = () => {
           </div>
         </section>
 
-        <section className="privacy-strip" aria-label="Datenschutz im Prototyp">
+        <section className="privacy-strip" aria-label="Datenschutzhinweis zum Prototyp">
           <span className="privacy-icon" aria-hidden="true">◈</span>
           <p>
-            <strong>Privatsphäre zuerst.</strong> In diesem Prototyp wird kein externes KI-Modell
-            verwendet. Deine Eingaben und Auswahlen werden nicht dauerhaft gespeichert.
-            Allergien bitte nicht hier eintragen, sondern sicher an P&amp;O übermitteln.
+            <strong>Dein Fortschritt bleibt in diesem Browser.</strong> Dieser Prototyp speichert
+            deine Demo-Auswahl lokal auf diesem Gerät. Es gibt kein Konto und keine Synchronisierung
+            zwischen Geräten. Bitte trage keine Allergien oder andere vertrauliche Angaben ein.
           </p>
           <span className="privacy-label">PROTOTYP</span>
         </section>
 
-        <div className="content-grid">
-          <section id="checkliste" className="checklist-panel">
-            <div className="section-heading">
-              <div>
-                <p className="eyebrow">IN DEINEM TEMPO</p>
-                <h2>Deine Vorbereitung</h2>
-              </div>
-              <div className="progress-count" aria-live="polite">
-                <span>{completedTasks.length}</span> / {PREBOARDING_TASKS.length}
-              </div>
-            </div>
-            <p className="section-intro">
-              Eine kleine Orientierung für die nächsten Schritte. Deine Auswahl bleibt nur so lange
-              sichtbar, wie diese Seite geöffnet ist.
-            </p>
-            <div className="task-list">
-              {PREBOARDING_TASKS.map((task, index) => {
-                const isComplete = completedTasks.includes(task.id);
-                return (
-                  <button
-                    className={`task-item${isComplete ? ' task-complete' : ''}`}
-                    key={task.id}
-                    type="button"
-                    aria-pressed={isComplete}
-                    onClick={() => toggleTask(task.id)}
-                  >
-                    <span className="task-number">{isComplete ? '✓' : String(index + 1).padStart(2, '0')}</span>
-                    <span className="task-content">
-                      <span className="task-title">{task.title}</span>
-                      <span className="task-description">{task.description}</span>
-                    </span>
-                    <span className="task-category">{task.category}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="checklist-footer">
-              <span className="footer-star" aria-hidden="true">✦</span>
-              <p>Du musst nicht alles heute erledigen. Ein guter Start entsteht Schritt für Schritt.</p>
-            </div>
-          </section>
+        {storageWarning && <p className="storage-warning" role="status">{storageWarning}</p>}
 
-          <aside className="assistant-panel" aria-labelledby="assistant-title">
-            <div className="assistant-heading">
-              <div className="assistant-avatar" aria-hidden="true">a1</div>
-              <div>
-                <p className="eyebrow">DEIN PREBOARDING-ASSISTENT</p>
-                <h2 id="assistant-title">Frag Aiko</h2>
-              </div>
-              <span className="assistant-online" aria-label="Im Prototyp verfügbar" />
+        <section id="deine-etappen" className="journey-section" aria-labelledby="journey-title">
+          <div className="journey-heading">
+            <div>
+              <p className="eyebrow">IN DEINEM TEMPO</p>
+              <h2 id="journey-title">Deine Preboarding-Etappen</h2>
             </div>
-            <div className="chat-window" aria-live="polite" aria-relevant="additions">
-              {messages.map((message) => (
-                <div className={`chat-message message-${message.role}`} key={message.id}>
-                  {message.role === 'assistant' && <span className="message-avatar" aria-hidden="true">a1</span>}
-                  <p>{message.text}</p>
-                </div>
-              ))}
+            <div className="overall-progress">
+              <span>{progress.completedStages.length} von {PREBOARDING_STAGES.length}</span> Etappen erledigt
             </div>
-            <p className="quick-prompt-label">Womit kann ich dir helfen?</p>
-            <div className="quick-actions">
-              {QUICK_ACTIONS.map((action) => (
-                <button key={action.label} type="button" onClick={() => sendMessage(action.prompt)}>
-                  {action.label}<span aria-hidden="true">↗</span>
-                </button>
-              ))}
-            </div>
-            <form className="chat-form" onSubmit={handleSubmit}>
-              <label className="visually-hidden" htmlFor="question">Allgemeine Frage an Aiko</label>
-              <input
-                id="question"
-                type="text"
-                autoComplete="off"
-                maxLength={500}
-                placeholder="Stell eine allgemeine Frage ..."
-                value={question}
-                onChange={(event) => setQuestion(event.target.value)}
-              />
-              <button type="submit" disabled={!question.trim()} aria-label="Nachricht senden">↑</button>
-            </form>
-            <p className="chat-disclaimer">Keine Namen, Passwörter, Gesundheits- oder Vertragsdaten eingeben.</p>
-          </aside>
-        </div>
-
-        <section className="preboarding-tools" aria-label="Self-Service vor deinem Start">
-          <div className="tool-section-heading">
-            <p className="eyebrow">VORBEREITEN STATT HINTERHERLAUFEN</p>
-            <h2>Was du vor deinem Start schon klären kannst</h2>
-            <p>Die Auswahlen sind unverbindliche Prototyp-Demos: keine Bestellung, Buchung oder Übermittlung.</p>
           </div>
+          <p className="journey-intro">
+            Die Zeitpunkte sind Orientierung. Öffne eine Etappe, wenn sie für dich passt. Nur eine
+            Etappe wird gleichzeitig im Detail angezeigt.
+          </p>
 
-          <div className="tool-grid">
-            <section className="tool-card equipment-card" aria-labelledby="equipment-title">
-              <div className="tool-card-heading">
-                <span className="tool-icon" aria-hidden="true">▣</span>
-                <div>
-                  <p className="eyebrow">SELF-SERVICE · DEMO</p>
-                  <h3 id="equipment-title">Ausstattung &amp; Software</h3>
-                </div>
+          <nav className="stage-navigation" aria-label="Preboarding-Etappen">
+            {PREBOARDING_STAGES.map((stage, index) => {
+              const completed = progress.completedStages.includes(stage.id);
+              const active = progress.activeStage === stage.id;
+              return (
+                <button
+                  className={`stage-nav-item${active ? ' stage-nav-active' : ''}${completed ? ' stage-nav-complete' : ''}`}
+                  key={stage.id}
+                  type="button"
+                  aria-current={active ? 'step' : undefined}
+                  onClick={() => openStage(stage.id)}
+                >
+                  <span className="stage-nav-number">{completed ? '✓' : `0${index + 1}`}</span>
+                  <span className="stage-nav-copy">
+                    <span className="stage-timing">{stage.timing}</span>
+                    <span className="stage-nav-title">{stage.title}</span>
+                  </span>
+                  <span className="stage-nav-chevron" aria-hidden="true">→</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <section className="stage-panel" aria-labelledby="stage-title">
+            <div className="stage-panel-heading">
+              <div className="stage-panel-icon" aria-hidden="true">
+                {activeStage.id === 'getting-ready' ? '▣' : activeStage.id === 'getting-connected' ? '♡' : '↗'}
               </div>
-              <p className="tool-description">Markiere, was du voraussichtlich brauchst. IT- und P&amp;O-Kataloge sowie die tatsächlichen Genehmigungswege müssen noch angebunden werden.</p>
-              <fieldset className="option-list">
-                <legend>Büro-Hardware und Mobilität</legend>
-                {EQUIPMENT_OPTIONS.map((option) => (
-                  <label className="option-row" key={option.id}>
+              <div>
+                <p className="eyebrow">{activeStage.timing}</p>
+                <h3 id="stage-title">{activeStage.title}</h3>
+                <p>{activeStage.description}</p>
+              </div>
+              {isStageComplete && <span className="completed-badge">Erledigt ✓</span>}
+            </div>
+
+            {activeStage.id === 'getting-ready' && (
+              <div className="stage-content">
+                <div className="form-section">
+                  <h4>Was brauchst du zum Arbeiten?</h4>
+                  <p>Markiere, was du voraussichtlich benötigst. Die Liste ist eine Demo und löst keine Bestellung aus.</p>
+                  <div className="choice-grid">
+                    {EQUIPMENT_OPTIONS.map((option) => (
+                      <label className="choice-card" key={option.id}>
+                        <input
+                          type="checkbox"
+                          checked={progress.equipment.includes(option.id)}
+                          onChange={() => updateProgress('equipment', toggleValue(progress.equipment, option.id))}
+                        />
+                        <span className="choice-check" aria-hidden="true">✓</span>
+                        <span>{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="form-section">
+                  <h4>Vorzuinstallierende Software</h4>
+                  <p>Die tatsächlichen Softwarekataloge und Freigaben müssten später mit der IT abgestimmt werden.</p>
+                  <div className="software-options">
+                    {SOFTWARE_OPTIONS.map((option) => (
+                      <label className="option-row" key={option.id}>
+                        <input
+                          type="checkbox"
+                          checked={progress.software.includes(option.id)}
+                          onChange={() => updateProgress('software', toggleValue(progress.software, option.id))}
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="form-section vehicle-section">
+                  <h4>Dienstwagen</h4>
+                  <p>Nur relevant, wenn dir die Nutzung bereits vorab freigegeben wurde.</p>
+                  <label className="option-row">
                     <input
                       type="checkbox"
-                      checked={selectedEquipment.includes(option.id)}
-                      onChange={() => {
-                        setSelectedEquipment((values) => toggleSelection(values, option.id));
-                        setDemoNotice('');
-                      }}
+                      checked={progress.hasCarApproval}
+                      onChange={(event) => setProgress((current) => ({
+                        ...current,
+                        hasCarApproval: event.target.checked,
+                        wantsCompanyCar: event.target.checked && current.wantsCompanyCar,
+                      }))}
                     />
-                    <span>{option.label}</span>
+                    <span>Die Nutzung eines Dienstwagens wurde mir bereits freigegeben.</span>
                   </label>
-                ))}
-                <label className="option-row approval-row">
-                  <input
-                    type="checkbox"
-                    checked={carApproval}
-                    onChange={(event) => {
-                      setCarApproval(event.target.checked);
-                      if (!event.target.checked) setRequestedCar(false);
-                      setDemoNotice('');
-                    }}
-                  />
-                  <span>Dienstwagen-Freigabe liegt bereits vor <small>(Demo-Schalter, wird nicht geprüft)</small></span>
-                </label>
-                <label className={`option-row${!carApproval ? ' option-disabled' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={requestedCar}
-                    disabled={!carApproval}
-                    onChange={(event) => {
-                      setRequestedCar(event.target.checked);
-                      setDemoNotice('');
-                    }}
-                  />
-                  <span>Dienstwagen <small>{carApproval ? '(vorherige Freigabe vorausgesetzt)' : '(erst nach vorheriger Freigabe auswählbar)'}</small></span>
-                </label>
-              </fieldset>
-              <fieldset className="option-list">
-                <legend>Vorzuinstallierende Software <span className="demo-label">Beispiele</span></legend>
-                {SOFTWARE_OPTIONS.map((option) => (
-                  <label className="option-row" key={option.id}>
-                    <input
-                      type="checkbox"
-                      checked={selectedSoftware.includes(option.id)}
-                      onChange={() => {
-                        setSelectedSoftware((values) => toggleSelection(values, option.id));
-                        setDemoNotice('');
-                      }}
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
-              </fieldset>
-              <p className="sensitive-note"><strong>Gesundheitsdaten?</strong> Allergien oder Ernährungsbedarfe nicht hier eintragen. Bitte informiere P&amp;O über den sicheren Kontakt aus deiner Einladung.</p>
-            </section>
-
-            <section className="tool-card" aria-labelledby="welcome-title">
-              <div className="tool-card-heading">
-                <span className="tool-icon travel-icon" aria-hidden="true">↗</span>
-                <div>
-                  <p className="eyebrow">ORGANISATION · DEMO</p>
-                  <h3 id="welcome-title">Welcome Days planen</h3>
-                </div>
-              </div>
-              <p className="tool-description">Nutze Ort und Termine aus deiner Einladung. Hier kannst du deine Planung unverbindlich strukturieren.</p>
-              <label className="field-label" htmlFor="travel-mode">Bevorzugtes Verkehrsmittel</label>
-              <select
-                id="travel-mode"
-                value={travelMode}
-                onChange={(event) => {
-                  setTravelMode(event.target.value);
-                  setDemoNotice('');
-                }}
-              >
-                <option value="">Bitte auswählen</option>
-                {TRAVEL_OPTIONS.map((option) => (
-                  <option key={option.id} value={option.id}>{option.label}</option>
-                ))}
-              </select>
-              <label className="option-row hotel-option">
-                <input
-                  type="checkbox"
-                  checked={needsHotel}
-                  onChange={(event) => {
-                    setNeedsHotel(event.target.checked);
-                    setDemoNotice('');
-                  }}
-                />
-                <span>Ich möchte eine Unterkunft anfragen</span>
-              </label>
-              <button
-                className="secondary-action"
-                type="button"
-                onClick={() => setDemoNotice('Deine Demo-Auswahl ist nur vorübergehend in dieser Seite sichtbar. Es wird nichts gebucht oder übermittelt.')}
-              >
-                Planung vormerken
-              </button>
-              <p className="sensitive-note"><strong>Hinweis:</strong> Diese Demo bucht weder Reise noch Hotel. Verbindliche Planung läuft über die in deiner Einladung genannten Kontakte.</p>
-            </section>
-
-            <section className="tool-card coffee-card" aria-labelledby="coffee-title">
-              <div className="tool-card-heading">
-                <span className="tool-icon coffee-icon" aria-hidden="true">☕</span>
-                <div>
-                  <p className="eyebrow">KONTAKTE · DEMO</p>
-                  <h3 id="coffee-title">Coffee Talk mit Kolleg:innen</h3>
-                </div>
-              </div>
-              <p className="tool-description">Ein lockeres Kennenlernen vor Tag 1 kann den Einstieg leichter machen. Wähle unverbindlich Themen, über die du dich gern austauschen würdest.</p>
-              <label className="option-row interest-row">
-                <input
-                  type="checkbox"
-                  checked={coffeeTalkInterest}
-                  onChange={(event) => {
-                    setCoffeeTalkInterest(event.target.checked);
-                    setDemoNotice('');
-                  }}
-                />
-                <span>Ich hätte Interesse an einem Coffee Talk</span>
-              </label>
-              {coffeeTalkInterest && (
-                <fieldset className="option-list topic-list">
-                  <legend>Mögliche Gesprächsthemen</legend>
-                  {COFFEE_TALK_TOPICS.map((option) => (
-                    <label className="option-row" key={option.id}>
+                  {progress.hasCarApproval && (
+                    <label className="option-row vehicle-choice">
                       <input
                         type="checkbox"
-                        checked={coffeeTalkTopics.includes(option.id)}
-                        onChange={() => {
-                          setCoffeeTalkTopics((values) => toggleSelection(values, option.id));
-                          setDemoNotice('');
-                        }}
+                        checked={progress.wantsCompanyCar}
+                        onChange={(event) => updateProgress('wantsCompanyCar', event.target.checked)}
                       />
-                      <span>{option.label}</span>
+                      <span>Ich möchte die Dienstwagenoption vormerken.</span>
                     </label>
-                  ))}
-                </fieldset>
-              )}
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeStage.id === 'getting-connected' && (
+              <div className="stage-content">
+                <div className="form-section">
+                  <h4>Schon vor dem ersten Tag ins Gespräch kommen?</h4>
+                  <p>Ein freiwilliger Coffee Talk kann dir einen ersten Eindruck vom Team und Arbeitsalltag geben.</p>
+                  <label className="option-row coffee-interest">
+                    <input
+                      type="checkbox"
+                      checked={progress.coffeeTalkInterest}
+                      onChange={(event) => updateProgress('coffeeTalkInterest', event.target.checked)}
+                    />
+                    <span>Ich hätte Interesse an einem lockeren Coffee Talk mit künftigen Kolleg:innen.</span>
+                  </label>
+                  {progress.coffeeTalkInterest && (
+                    <fieldset className="topic-fieldset">
+                      <legend>Worüber würdest du dich gern austauschen?</legend>
+                      {COFFEE_TALK_TOPICS.map((topic) => (
+                        <label className="option-row" key={topic.id}>
+                          <input
+                            type="checkbox"
+                            checked={progress.coffeeTalkTopics.includes(topic.id)}
+                            onChange={() => updateProgress('coffeeTalkTopics', toggleValue(progress.coffeeTalkTopics, topic.id))}
+                          />
+                          <span>{topic.label}</span>
+                        </label>
+                      ))}
+                    </fieldset>
+                  )}
+                  <p className="inline-note">In diesem Prototyp wird niemand kontaktiert oder zugeordnet. Ein echtes Matching braucht einen freiwilligen, freigegebenen Prozess.</p>
+                </div>
+              </div>
+            )}
+
+            {activeStage.id === 'welcome-days' && (
+              <div className="stage-content">
+                <div className="form-section">
+                  <h4>Wie planst du deine Anreise?</h4>
+                  <p>Nutze für Datum und Ort die Informationen in deiner Einladung zu den Welcome Days.</p>
+                  <label className="field-label" htmlFor="travel-mode">Bevorzugtes Verkehrsmittel</label>
+                  <select
+                    className="travel-select"
+                    id="travel-mode"
+                    value={progress.travelMode}
+                    onChange={(event) => updateProgress('travelMode', event.target.value)}
+                  >
+                    <option value="">Bitte auswählen</option>
+                    {TRAVEL_OPTIONS.map((option) => (
+                      <option key={option.id} value={option.id}>{option.label}</option>
+                    ))}
+                  </select>
+                  <label className="option-row accommodation-choice">
+                    <input
+                      type="checkbox"
+                      checked={progress.needsAccommodation}
+                      onChange={(event) => updateProgress('needsAccommodation', event.target.checked)}
+                    />
+                    <span>Ich möchte Informationen zu einer Unterkunft erhalten.</span>
+                  </label>
+                  <p className="inline-note">Diese Demo bucht keine Reise und kein Hotel. Für verbindliche Planung nutze den Kontakt aus deiner Einladung.</p>
+                </div>
+                <div className="sensitive-data-note">
+                  <span aria-hidden="true">◈</span>
+                  <p><strong>Allergien oder Ernährungsbedarfe?</strong> Das sind sensible Gesundheitsangaben. Bitte nicht hier eintragen, sondern bei Bedarf über den sicheren P&amp;O-Kontakt aus deiner Einladung klären.</p>
+                </div>
+              </div>
+            )}
+
+            <div className="stage-actions">
               <button
-                className="secondary-action"
+                className="text-action"
                 type="button"
-                disabled={!coffeeTalkInterest}
-                onClick={() => setDemoNotice('Dein Interesse ist nur vorübergehend in dieser Seite sichtbar. Es wird niemand kontaktiert oder zugeordnet.')}
+                disabled={activeIndex === 0}
+                onClick={() => openStage(PREBOARDING_STAGES[activeIndex - 1].id)}
               >
-                Interesse vormerken
+                ← Zur vorherigen Etappe
               </button>
-              <p className="sensitive-note"><strong>Keine Vermittlung in der Demo.</strong> Für ein echtes freiwilliges Matching braucht es einen freigegebenen Prozess und passende Kontakte.</p>
-            </section>
-          </div>
-          {demoNotice && <p className="demo-notice" role="status">{demoNotice}</p>}
+              {activeIndex < PREBOARDING_STAGES.length - 1 ? (
+                <button className="primary-action" type="button" onClick={continueToNextStage}>
+                  Etappe abschließen &amp; weiter <span aria-hidden="true">→</span>
+                </button>
+              ) : (
+                <button
+                  className={`primary-action${isStageComplete ? ' action-complete' : ''}`}
+                  type="button"
+                  onClick={continueToNextStage}
+                >
+                  {isStageComplete ? 'Etappe erledigt ✓' : 'Etappe abschließen'}
+                </button>
+              )}
+            </div>
+          </section>
         </section>
 
         <section className="contact-card">
           <div className="contact-icon" aria-hidden="true">?</div>
           <div className="contact-copy">
             <h2>Du brauchst eine verbindliche Antwort?</h2>
-            <p>Bei persönlichen, vertraulichen oder hier nicht abgedeckten Fragen hilft dir dein People-&amp;-Organization-Kontakt (P&amp;O) aus der Einladung weiter.</p>
+            <p>Bei persönlichen oder vertraulichen Fragen hilft dir dein People-&amp;-Organization-Kontakt (P&amp;O) aus der Einladung weiter.</p>
           </div>
           <span className="contact-hint">Sicheren P&amp;O-Kontakt nutzen <span aria-hidden="true">→</span></span>
         </section>
@@ -383,7 +394,8 @@ const App: React.FC = () => {
 
       <footer className="page-footer">
         <span>All for One <span aria-hidden="true">·</span> Preboarding</span>
-        <span>Prototyp – Inhalte und Datenschutzkonzept müssen vor einem Produktivbetrieb geprüft und freigegeben werden.</span>
+        <span>Prototyp – Fortschritt wird nur lokal auf diesem Gerät gespeichert, nicht an P&amp;O übermittelt.</span>
+        <button className="reset-action" type="button" onClick={resetProgress}>Fortschritt zurücksetzen</button>
       </footer>
     </div>
   );
