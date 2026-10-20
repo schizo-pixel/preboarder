@@ -2,9 +2,13 @@ import React, { useEffect, useState } from 'react';
 import './App.css';
 import {
   COFFEE_TALK_TOPICS,
-  EQUIPMENT_OPTIONS,
+  ACCESSORY_OPTIONS,
+  BAHNCARD_OPTIONS,
+  HEADSET_OPTIONS,
   INITIAL_PROGRESS,
+  MONITOR_OPTIONS,
   PREBOARDING_STAGES,
+  PHONE_OPTIONS,
   SOFTWARE_OPTIONS,
   STORAGE_KEY,
   TRAVEL_OPTIONS,
@@ -29,7 +33,11 @@ const isProgress = (value: unknown): value is PreboardingProgress => {
     isAllowedArray(progress.completedStages, PREBOARDING_STAGES.map((stage) => stage.id)) &&
     new Set(progress.completedStages).size === progress.completedStages.length &&
     progress.completedStages.every(isStageId) &&
-    isAllowedArray(progress.equipment, EQUIPMENT_OPTIONS.map((option) => option.id)) &&
+    (progress.monitor === '' || MONITOR_OPTIONS.some((option) => option.id === progress.monitor)) &&
+    (progress.phone === '' || PHONE_OPTIONS.some((option) => option.id === progress.phone)) &&
+    (progress.headset === '' || HEADSET_OPTIONS.some((option) => option.id === progress.headset)) &&
+    isAllowedArray(progress.accessories, ACCESSORY_OPTIONS.map((option) => option.id)) &&
+    (progress.bahncard === '' || BAHNCARD_OPTIONS.some((option) => option.id === progress.bahncard)) &&
     isAllowedArray(progress.software, SOFTWARE_OPTIONS.map((option) => option.id)) &&
     typeof progress.coffeeTalkInterest === 'boolean' &&
     isAllowedArray(progress.coffeeTalkTopics, COFFEE_TALK_TOPICS.map((topic) => topic.id)) &&
@@ -225,25 +233,74 @@ const App: React.FC = () => {
               <div className="stage-content">
                 <div className="form-section">
                   <h4>Welche Ausstattung brauchst du voraussichtlich?</h4>
-                  <p>Deine Auswahl wird lokal als unverbindlicher Entwurf gespeichert. Sie erstellt noch keine Anfrage und löst keine Bestellung aus.</p>
-                  <div className="choice-grid">
-                    {EQUIPMENT_OPTIONS.map((option) => (
-                      <label className="choice-card" key={option.id}>
-                        <input
-                          type="checkbox"
-                          checked={progress.equipment.includes(option.id)}
-                          onChange={() => updateProgress('equipment', toggleValue(progress.equipment, option.id))}
-                        />
-                        <span className="choice-check" aria-hidden="true">✓</span>
-                        <span>{option.label}</span>
-                      </label>
-                    ))}
+                  <p>Wähle eine konkrete Ausführung oder lass die Auswahl offen. Deine Angaben werden lokal als Entwurf gespeichert – noch ohne Anfrage oder Bestellung.</p>
+                  <p className="catalog-note">Die Produktnamen und technischen Varianten sind realistische Beispiele, aber noch kein von All for One bestätigter Katalog. Verfügbarkeit, Standards und Anspruch müssen die zuständigen Stellen freigeben.</p>
+                  <div className="product-select-grid">
+                    <label className="product-field" htmlFor="monitor-option">
+                      <span>Monitor</span>
+                      <select
+                        className="product-select"
+                        id="monitor-option"
+                        value={progress.monitor}
+                        onChange={(event) => updateProgress('monitor', event.target.value)}
+                      >
+                        {MONITOR_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                      </select>
+                    </label>
+                    <label className="product-field" htmlFor="phone-option">
+                      <span>Diensthandy</span>
+                      <select
+                        className="product-select"
+                        id="phone-option"
+                        value={progress.phone}
+                        onChange={(event) => updateProgress('phone', event.target.value)}
+                      >
+                        {PHONE_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                      </select>
+                    </label>
+                    <label className="product-field" htmlFor="headset-option">
+                      <span>Headset</span>
+                      <select
+                        className="product-select"
+                        id="headset-option"
+                        value={progress.headset}
+                        onChange={(event) => updateProgress('headset', event.target.value)}
+                      >
+                        {HEADSET_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                      </select>
+                    </label>
+                    <label className="product-field" htmlFor="bahncard-option">
+                      <span>BahnCard</span>
+                      <select
+                        className="product-select"
+                        id="bahncard-option"
+                        value={progress.bahncard}
+                        onChange={(event) => updateProgress('bahncard', event.target.value)}
+                      >
+                        {BAHNCARD_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                      </select>
+                    </label>
                   </div>
+                  <fieldset className="accessory-fieldset">
+                    <legend>Weiteres Zubehör</legend>
+                    <div className="software-options">
+                      {ACCESSORY_OPTIONS.map((option) => (
+                        <label className="option-row" key={option.id}>
+                          <input
+                            type="checkbox"
+                            checked={progress.accessories.includes(option.id)}
+                            onChange={() => updateProgress('accessories', toggleValue(progress.accessories, option.id))}
+                          />
+                          <span>{option.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
                 </div>
 
                 <div className="form-section">
-                  <h4>Softwarebedarf vormerken</h4>
-                  <p>Deine Auswahl ist ein lokal gespeicherter Entwurf, noch keine Installations- oder IT-Anfrage. Kataloge und Freigaben müssen mit der IT abgestimmt werden.</p>
+                  <h4>Welche Software brauchst du voraussichtlich?</h4>
+                  <p>Die folgenden konkreten Produkte sind Beispiele, kein bestätigter All-for-One-Katalog. Rollenabhängige Software und Freigaben müssen mit der IT abgestimmt werden.</p>
                   <div className="software-options">
                     {SOFTWARE_OPTIONS.map((option) => (
                       <label className="option-row" key={option.id}>

@@ -18,6 +18,7 @@ npm run dev
 - `localStorage` ist keine geschützte oder produktionsgeeignete Speicherung für personenbezogene Daten. Andere Personen mit Zugriff auf dasselbe Browserprofil können Demo-Auswahlen möglicherweise sehen. Bitte auf gemeinsam genutzten Geräten nicht mit persönlichen Angaben verwenden.
 - Es gibt keine Verbindung zu einem externen KI-Dienst oder einer externen Schrift-/CSS-CDN.
 - Sämtliche Eingaben sind lokale Entwürfe. Es wird keine Bestellung, Installation, Buchung, Zuordnung, P&O-/IT-Anfrage oder Übermittlung ausgeführt. Ein Dienstwagen kann nicht per Selbstauskunft freigegeben werden.
+- Hardware- und Softwareoptionen sind konkrete, aber illustrative Produktbeispiele; sie sind kein bestätigter All-for-One-Katalog. Verfügbarkeit, technische Standards, Berechtigungen und Genehmigungsregeln müssen die zuständigen Stellen validieren.
 - Allergien und andere Gesundheitsdaten dürfen nicht in die Demo eingegeben werden. Dafür und für persönliche Anliegen verweist der Prototyp auf den sicheren P&O-Kontakt aus der Einladung.
 - Bitte auch keine Passwörter, Zugangscodes, Bank-, Vertrags- oder sonstigen vertraulichen Angaben eingeben.
 

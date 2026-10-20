@@ -539,64 +539,53 @@ select:focus-visible {
   line-height: 1.55;
 }
 
-.choice-grid {
+.form-section > .catalog-note {
+  margin: -4px 0 12px;
+  border-left: 2px solid #c99b56;
+  padding: 6px 9px;
+  color: #786544;
+  background: #fffaf0;
+  font-size: 8px;
+}
+
+.product-select-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
-.choice-card {
-  min-height: 42px;
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid #ebe6ed;
-  border-radius: 7px;
-  padding: 8px 10px;
-  color: #615867;
-  background: #fff;
-  cursor: pointer;
+.product-field {
+  display: grid;
+  gap: 5px;
+  color: #594e5f;
   font-size: 9px;
-  line-height: 1.35;
-  transition: border-color .15s ease, background .15s ease;
+  font-weight: 700;
 }
 
-.choice-card:has(input:checked) {
-  border-color: #a68eaf;
-  color: #3e3043;
-  background: #faf7fb;
-}
-
-.choice-card input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-}
-
-.choice-card:focus-within {
-  outline: 3px solid #f4a448;
-  outline-offset: 2px;
-}
-
-.choice-check {
-  width: 16px;
-  height: 16px;
-  display: grid;
-  flex: 0 0 16px;
-  place-items: center;
-  border: 1px solid #ddd5e1;
-  border-radius: 4px;
-  color: transparent;
+.product-select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #e7e1e9;
+  border-radius: 7px;
+  padding: 8px 9px;
+  color: #514758;
   background: #fff;
-  font-size: 10px;
+  font-size: 9px;
+  font-weight: 400;
 }
 
-.choice-card input:checked + .choice-check {
-  border-color: var(--plum);
-  color: #fff;
-  background: var(--plum);
+.accessory-fieldset {
+  margin: 14px 0 0;
+  border: 0;
+  border-top: 1px solid #f0edf1;
+  padding: 10px 0 0;
+}
+
+.accessory-fieldset legend {
+  padding-bottom: 5px;
+  color: #594e5f;
+  font-size: 9px;
+  font-weight: 700;
 }
 
 .software-options {
@@ -879,8 +868,8 @@ select:focus-visible {
     padding: 18px;
   }
 
-  .choice-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .product-select-grid {
+    grid-template-columns: 1fr;
   }
 
   .page-footer {
@@ -953,7 +942,7 @@ select:focus-visible {
     display: none;
   }
 
-  .choice-grid,
+  .product-select-grid,
   .software-options {
     grid-template-columns: 1fr;
   }
