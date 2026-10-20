@@ -13,5 +13,11 @@ export interface PreboardingTask {
   id: string;
   title: string;
   description: string;
-  category: 'Organisation' | 'Self-Service' | 'IT' | 'Menschen';
+  category: 'Organisation' | 'Self-Service' | 'IT' | 'Menschen' | 'P&O';
+}
+
+export interface PreboardingOption {
+  id: string;
+  label: string;
+  description?: string;
 }
