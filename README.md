@@ -1,20 +1,22 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# All for One Preboarding
 
-# Run and deploy your AI Studio app
+Ein datensparsamer UI-Prototyp für Informationen und Self-Service vor dem ersten Arbeitstag. Er ist bewusst kein allgemeiner Onboarding-Assistent: Im Mittelpunkt stehen die Vorbereitung vor Tag 1, offizielle HR-/IT-Kanäle und eine Checkliste, die keine Anmeldung voraussetzt.
 
-This contains everything you need to run your app locally.
+## Lokal starten
 
-View your app in AI Studio: https://ai.studio/apps/drive/1LrCIz1HlzA-amDiVnknxMVO99bZ6uDs1
+Voraussetzung: Node.js.
 
-## Run Locally
+```sh
+npm install
+npm run dev
+```
 
-**Prerequisites:**  Node.js
+## Datenschutz im Prototyp
 
+- Es werden keine Namen, Startdaten oder sonstigen personenbezogenen Angaben abgefragt.
+- Checklistenstatus und Chatverlauf existieren nur im Arbeitsspeicher der geöffneten Seite; es gibt keine Speicherung in Cookies oder `localStorage`.
+- Der Chat verwendet lokale, fest hinterlegte Antworten. Es gibt keine Verbindung zu einem externen KI-Dienst oder einer externen Schrift-/CSS-CDN.
+- Bitte keine Passwörter, Zugangscodes, Gesundheits-, Bank-, Vertrags- oder sonstigen vertraulichen Angaben eingeben.
+- Für verbindliche oder persönliche Anliegen verweist der Prototyp an den offiziellen HR-/IT-Kontakt in der Einladung.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Diese technischen Maßnahmen sind keine Bestätigung einer DSGVO-Konformität. Vor einem Produktivbetrieb müssen unter anderem Inhalte und Zwecke, Verantwortlichkeiten, Rechtsgrundlagen, Lösch- und Aufbewahrungsfristen, Hosting, Zugriffs- und Serverprotokolle sowie die Informationspflichten mit Datenschutz und Informationssicherheit geprüft werden. Unternehmens- und Prozessinformationen sind vor Veröffentlichung durch die jeweiligen Verantwortlichen freizugeben.

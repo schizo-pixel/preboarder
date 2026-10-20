@@ -1,17 +1,17 @@
 export interface Message {
   id: string;
-  role: 'user' | 'model';
+  role: 'user' | 'assistant';
   text: string;
-  isTyping?: boolean;
-  timestamp: Date;
 }
 
 export interface QuickAction {
   label: string;
   prompt: string;
-  icon: string;
 }
 
-export interface AppConfig {
-  knowledgeBase: string;
+export interface PreboardingTask {
+  id: string;
+  title: string;
+  description: string;
+  category: 'Organisation' | 'Self-Service' | 'IT' | 'Menschen';
 }
