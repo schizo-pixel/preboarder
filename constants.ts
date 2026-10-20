@@ -28,8 +28,6 @@ export interface PreboardingProgress {
   completedStages: PreboardingStageId[];
   equipment: string[];
   software: string[];
-  hasCarApproval: boolean;
-  wantsCompanyCar: boolean;
   coffeeTalkInterest: boolean;
   coffeeTalkTopics: string[];
   travelMode: string;
@@ -41,8 +39,6 @@ export const INITIAL_PROGRESS: PreboardingProgress = {
   completedStages: [],
   equipment: [],
   software: [],
-  hasCarApproval: false,
-  wantsCompanyCar: false,
   coffeeTalkInterest: false,
   coffeeTalkTopics: [],
   travelMode: '',

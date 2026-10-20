@@ -31,8 +31,6 @@ const isProgress = (value: unknown): value is PreboardingProgress => {
     progress.completedStages.every(isStageId) &&
     isAllowedArray(progress.equipment, EQUIPMENT_OPTIONS.map((option) => option.id)) &&
     isAllowedArray(progress.software, SOFTWARE_OPTIONS.map((option) => option.id)) &&
-    typeof progress.hasCarApproval === 'boolean' &&
-    typeof progress.wantsCompanyCar === 'boolean' &&
     typeof progress.coffeeTalkInterest === 'boolean' &&
     isAllowedArray(progress.coffeeTalkTopics, COFFEE_TALK_TOPICS.map((topic) => topic.id)) &&
     (progress.travelMode === '' || TRAVEL_OPTIONS.some((option) => option.id === progress.travelMode)) &&
@@ -226,8 +224,8 @@ const App: React.FC = () => {
             {activeStage.id === 'getting-ready' && (
               <div className="stage-content">
                 <div className="form-section">
-                  <h4>Was brauchst du zum Arbeiten?</h4>
-                  <p>Markiere, was du voraussichtlich benötigst. Die Liste ist eine Demo und löst keine Bestellung aus.</p>
+                  <h4>Welche Ausstattung brauchst du voraussichtlich?</h4>
+                  <p>Deine Auswahl wird lokal als unverbindlicher Entwurf gespeichert. Sie erstellt noch keine Anfrage und löst keine Bestellung aus.</p>
                   <div className="choice-grid">
                     {EQUIPMENT_OPTIONS.map((option) => (
                       <label className="choice-card" key={option.id}>
@@ -244,8 +242,8 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="form-section">
-                  <h4>Vorzuinstallierende Software</h4>
-                  <p>Die tatsächlichen Softwarekataloge und Freigaben müssten später mit der IT abgestimmt werden.</p>
+                  <h4>Softwarebedarf vormerken</h4>
+                  <p>Deine Auswahl ist ein lokal gespeicherter Entwurf, noch keine Installations- oder IT-Anfrage. Kataloge und Freigaben müssen mit der IT abgestimmt werden.</p>
                   <div className="software-options">
                     {SOFTWARE_OPTIONS.map((option) => (
                       <label className="option-row" key={option.id}>
@@ -262,29 +260,10 @@ const App: React.FC = () => {
 
                 <div className="form-section vehicle-section">
                   <h4>Dienstwagen</h4>
-                  <p>Nur relevant, wenn dir die Nutzung bereits vorab freigegeben wurde.</p>
-                  <label className="option-row">
-                    <input
-                      type="checkbox"
-                      checked={progress.hasCarApproval}
-                      onChange={(event) => setProgress((current) => ({
-                        ...current,
-                        hasCarApproval: event.target.checked,
-                        wantsCompanyCar: event.target.checked && current.wantsCompanyCar,
-                      }))}
-                    />
-                    <span>Die Nutzung eines Dienstwagens wurde mir bereits freigegeben.</span>
-                  </label>
-                  {progress.hasCarApproval && (
-                    <label className="option-row vehicle-choice">
-                      <input
-                        type="checkbox"
-                        checked={progress.wantsCompanyCar}
-                        onChange={(event) => updateProgress('wantsCompanyCar', event.target.checked)}
-                      />
-                      <span>Ich möchte die Dienstwagenoption vormerken.</span>
-                    </label>
-                  )}
+                  <p>Eine Freigabe kann nicht durch eine Selbstauskunft ersetzt werden.</p>
+                  <div className="inline-note">
+                    Wenn du voraussichtlich einen Dienstwagen benötigst, kläre die Voraussetzungen mit P&amp;O bzw. der zuständigen Stelle. Ein späterer Produktivprozess müsste Freigabe, Prüfung und Übergabe an die zuständige Stelle tatsächlich abbilden.
+                  </div>
                 </div>
               </div>
             )}
